@@ -1,13 +1,16 @@
 package meta
 
 import (
+	"ant/db"
+	"fmt"
 	"mime/multipart"
 	"time"
 )
 
 // 文件元数据
 type FileMeta struct {
-	Id        string // id 可以使用 sha1 md5
+	Id string // id 可以使用 sha1 md5
+	// Linux文件名的长度限制是255个字符(Byte)。
 	Name      string // 文件名
 	Size      int64  // 大小
 	Localtion string // 文件路径
@@ -25,12 +28,35 @@ func init() {
 	新增或者更新元数据
 */
 func UpdaeFileMeta(fm *FileMeta) {
-	fileMetas[fm.Id] = fm
+	db.SaveFileMetaData(fm.Id, fm.Name, fm.Size, fm.Localtion)
+	//fileMetas[fm.Id] = fm
 }
 
 // 通过sha1获取文件元数据对象
-func GetFileMeta(hex string) *FileMeta {
-	return fileMetas[hex]
+func GetFileMeta(hash string) *FileMeta {
+	file, e := db.GetFileMeta(hash)
+	if e != nil {
+		fmt.Println("GetFileMeta error : ", e)
+		return nil
+	}
+	return &FileMeta{
+		Id:        file.Sha256,
+		Name:      file.Name.String,
+		Size:      file.Size.Int64,
+		Localtion: file.Addr.String,
+	}
+}
+
+// 删除元数据
+func DeleteFileMeta(hash string) *FileMeta {
+	meta := GetFileMeta(hash)
+	delete(fileMetas, hash)
+	return meta
+}
+
+// 通过sha1获取文件元数据对象
+func GetAllFileMeta() map[string]*FileMeta {
+	return fileMetas
 }
 
 func CreateFileMetaByHeader(h *multipart.FileHeader) *FileMeta {
